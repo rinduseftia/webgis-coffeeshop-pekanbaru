@@ -1,0 +1,835 @@
+<!doctype html>
+<html lang="id">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="initial-scale=1,user-scalable=no,maximum-scale=1,width=device-width">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>☕ Peta Sebaran Coffeeshop Pekanbaru</title>
+
+    <!-- Leaflet -->
+    <link rel="stylesheet" href="css/leaflet.css">
+    <link rel="stylesheet" href="css/L.Control.Locate.min.css">
+    <link rel="stylesheet" href="css/fontawesome-all.min.css">
+    <link rel="stylesheet" href="css/leaflet-search.css">
+    <link rel="stylesheet" href="css/MarkerCluster.css">
+    <link rel="stylesheet" href="css/MarkerCluster.Default.css">
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --coffee-dark:    #1a0f00;
+            --coffee-mid:     #3d1f00;
+            --coffee-brown:   #6b3a1f;
+            --coffee-latte:   #c49a6c;
+            --coffee-cream:   #f5e6d0;
+            --coffee-foam:    #fdf6ed;
+            --accent-gold:    #e8b84b;
+            --accent-red:     #c0392b;
+            --text-light:     #ffffff;
+            --panel-bg:       rgba(26, 15, 0, 0.92);
+            --panel-border:   rgba(196, 154, 108, 0.3);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        html, body {
+            width: 100%; height: 100%;
+            font-family: 'DM Sans', sans-serif;
+            background: var(--coffee-dark);
+            overflow: hidden;
+        }
+
+        /* ── HEADER ── */
+        #header {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            height: 64px;
+            background: linear-gradient(135deg, var(--coffee-dark) 0%, var(--coffee-mid) 100%);
+            border-bottom: 1px solid var(--panel-border);
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            z-index: 1200;
+            box-shadow: 0 2px 20px rgba(0,0,0,0.5);
+        }
+
+        #header .logo {
+            font-family: 'Playfair Display', serif;
+            font-size: 22px;
+            font-weight: 900;
+            color: var(--accent-gold);
+            letter-spacing: -0.5px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        #header .logo span {
+            font-size: 28px;
+        }
+
+        #header .subtitle {
+            font-size: 12px;
+            color: var(--coffee-latte);
+            font-weight: 300;
+            margin-left: 14px;
+            padding-left: 14px;
+            border-left: 1px solid var(--panel-border);
+            line-height: 1.4;
+        }
+
+        #header .subtitle strong {
+            color: var(--coffee-cream);
+            font-weight: 500;
+            display: block;
+        }
+
+        #header .badge {
+            margin-left: auto;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        #header .badge-item {
+            background: rgba(232,184,75,0.15);
+            border: 1px solid rgba(232,184,75,0.3);
+            border-radius: 20px;
+            padding: 4px 12px;
+            font-size: 11px;
+            color: var(--accent-gold);
+            font-weight: 500;
+        }
+
+        /* ── MAP ── */
+        #map {
+            position: fixed;
+            top: 64px; left: 0; right: 0; bottom: 0;
+        }
+
+        /* ── SIDE PANEL ── */
+        #side-panel {
+            position: fixed;
+            top: 64px;
+            right: 0;
+            width: 300px;
+            bottom: 0;
+            background: var(--panel-bg);
+            border-left: 1px solid var(--panel-border);
+            z-index: 1100;
+            display: flex;
+            flex-direction: column;
+            backdrop-filter: blur(10px);
+        }
+
+        #side-panel .panel-section {
+            padding: 16px 18px;
+            border-bottom: 1px solid var(--panel-border);
+        }
+
+        #side-panel .section-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 13px;
+            color: var(--coffee-latte);
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            margin-bottom: 12px;
+        }
+
+        /* Stats grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .stat-card {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid var(--panel-border);
+            border-radius: 8px;
+            padding: 10px 12px;
+            text-align: center;
+        }
+
+        .stat-card .num {
+            font-family: 'Playfair Display', serif;
+            font-size: 26px;
+            font-weight: 700;
+            color: var(--accent-gold);
+            line-height: 1;
+        }
+
+        .stat-card .lbl {
+            font-size: 10px;
+            color: var(--coffee-latte);
+            margin-top: 3px;
+            line-height: 1.3;
+        }
+
+        /* Layer toggle */
+        .layer-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 0;
+        }
+
+        .layer-toggle + .layer-toggle {
+            border-top: 1px solid rgba(196,154,108,0.1);
+        }
+
+        .layer-info { display: flex; align-items: center; gap: 8px; }
+
+        .layer-icon {
+            width: 28px; height: 18px;
+            border-radius: 3px;
+            flex-shrink: 0;
+        }
+
+        .layer-icon.coffee-icon {
+            background: none;
+            font-size: 18px;
+            text-align: center;
+            line-height: 18px;
+        }
+
+        .layer-icon.kecamatan-icon {
+            background: linear-gradient(135deg, #b8e09c 0%, #5ba04a 100%);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .layer-icon.jalan-icon {
+            background: none;
+            border-top: 3px solid var(--accent-red);
+            margin-top: 8px;
+        }
+
+        .layer-name {
+            font-size: 12px;
+            color: var(--coffee-cream);
+            font-weight: 400;
+        }
+
+        .toggle-switch {
+            position: relative; width: 36px; height: 20px;
+            flex-shrink: 0;
+        }
+
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+
+        .toggle-slider {
+            position: absolute; inset: 0;
+            background: rgba(255,255,255,0.15);
+            border-radius: 20px;
+            cursor: pointer;
+            transition: .3s;
+        }
+
+        .toggle-slider:before {
+            content: '';
+            position: absolute;
+            width: 14px; height: 14px;
+            left: 3px; top: 3px;
+            background: white;
+            border-radius: 50%;
+            transition: .3s;
+        }
+
+        .toggle-switch input:checked + .toggle-slider {
+            background: var(--accent-gold);
+        }
+
+        .toggle-switch input:checked + .toggle-slider:before {
+            transform: translateX(16px);
+        }
+
+        /* Legend */
+        .legend-list { display: flex; flex-direction: column; gap: 4px; max-height: 260px; overflow-y: auto; }
+
+        .legend-list::-webkit-scrollbar { width: 4px; }
+        .legend-list::-webkit-scrollbar-track { background: transparent; }
+        .legend-list::-webkit-scrollbar-thumb { background: var(--panel-border); border-radius: 2px; }
+
+        .legend-item {
+            display: flex; align-items: center; gap: 8px;
+            padding: 3px 0;
+        }
+
+        .legend-color {
+            width: 14px; height: 14px;
+            border-radius: 3px;
+            border: 1px solid rgba(255,255,255,0.15);
+            flex-shrink: 0;
+        }
+
+        .legend-label {
+            font-size: 11px;
+            color: var(--coffee-cream);
+        }
+
+        /* Credit */
+        .credit {
+            padding: 10px 18px;
+            font-size: 10px;
+            color: rgba(196,154,108,0.5);
+            margin-top: auto;
+            line-height: 1.6;
+        }
+
+        /* ── POPUP STYLING ── */
+        .leaflet-popup-content-wrapper {
+            background: var(--coffee-dark) !important;
+            border: 1px solid var(--panel-border) !important;
+            border-radius: 12px !important;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.6) !important;
+            padding: 0 !important;
+            overflow: hidden !important;
+        }
+
+        .leaflet-popup-content {
+            margin: 0 !important;
+            color: var(--coffee-cream) !important;
+            font-family: 'DM Sans', sans-serif !important;
+        }
+
+        .leaflet-popup-tip {
+            background: var(--coffee-dark) !important;
+        }
+
+        .popup-header {
+            background: linear-gradient(135deg, var(--coffee-mid), var(--coffee-brown));
+            padding: 12px 14px 10px;
+            border-bottom: 1px solid var(--panel-border);
+        }
+
+        .popup-icon { font-size: 20px; margin-bottom: 2px; }
+
+        .popup-name {
+            font-family: 'Playfair Display', serif;
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--accent-gold);
+            line-height: 1.3;
+        }
+
+        .popup-body {
+            padding: 10px 14px 12px;
+        }
+
+        .popup-addr {
+            font-size: 11px;
+            color: var(--coffee-latte);
+            line-height: 1.5;
+            display: flex;
+            gap: 6px;
+        }
+
+        .popup-addr i { color: var(--accent-gold); margin-top: 1px; flex-shrink: 0; }
+
+        .popup-btn {
+            display: inline-block;
+            margin-top: 8px;
+            padding: 5px 12px;
+            background: rgba(232,184,75,0.15);
+            border: 1px solid rgba(232,184,75,0.4);
+            border-radius: 20px;
+            font-size: 10px;
+            color: var(--accent-gold);
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .popup-btn:hover {
+            background: rgba(232,184,75,0.3);
+        }
+
+        /* ── SEARCH BOX ── */
+        .leaflet-control-search {
+            background: var(--coffee-dark) !important;
+            border: 1px solid var(--panel-border) !important;
+        }
+
+        .search-input {
+            background: var(--coffee-dark) !important;
+            color: var(--coffee-cream) !important;
+        }
+
+        /* ── ZOOM CONTROL ── */
+        .leaflet-control-zoom a {
+            background: var(--panel-bg) !important;
+            color: var(--coffee-cream) !important;
+            border-color: var(--panel-border) !important;
+        }
+
+        .leaflet-control-zoom a:hover {
+            background: var(--coffee-mid) !important;
+        }
+
+        /* ── COFFEE MARKER CUSTOM ── */
+        .coffee-marker-div {
+            width: 28px; height: 28px;
+            background: var(--coffee-brown);
+            border: 2px solid var(--accent-gold);
+            border-radius: 50% 50% 50% 0;
+            transform: rotate(-45deg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+            transition: transform 0.2s;
+        }
+
+        .coffee-marker-div span {
+            transform: rotate(45deg);
+            font-size: 13px;
+            line-height: 1;
+        }
+
+        .coffee-marker-div:hover { transform: rotate(-45deg) scale(1.2); }
+
+        /* ── KECAMATAN POPUP (simple) ── */
+        .kec-popup {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--coffee-dark);
+            color: var(--coffee-cream);
+            padding: 8px 12px;
+            border-radius: 8px;
+        }
+
+        .kec-popup strong {
+            font-family: 'Playfair Display', serif;
+            color: var(--accent-gold);
+            display: block;
+            margin-bottom: 2px;
+        }
+
+        .kec-popup small { color: var(--coffee-latte); font-size: 10px; }
+
+        /* ── LOADING OVERLAY ── */
+        #loader {
+            position: fixed; inset: 0;
+            background: var(--coffee-dark);
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.6s;
+        }
+
+        #loader .loader-logo {
+            font-family: 'Playfair Display', serif;
+            font-size: 48px;
+            color: var(--accent-gold);
+            margin-bottom: 8px;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        #loader p {
+            font-size: 13px;
+            color: var(--coffee-latte);
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50%       { opacity: 0.6; transform: scale(0.95); }
+        }
+
+        /* Mobile responsive */
+        @media (max-width: 700px) {
+            #side-panel { width: 100%; top: auto; bottom: 0; height: 45%; border-top: 1px solid var(--panel-border); border-left: none; }
+            #map { bottom: 45%; }
+            #header .subtitle { display: none; }
+            #header .badge { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- LOADER -->
+<div id="loader">
+    <div class="loader-logo">☕</div>
+    <p>Memuat Peta Pekanbaru...</p>
+</div>
+
+<!-- HEADER -->
+<div id="header">
+    <div class="logo">
+        <span>☕</span>
+        Peta Sebaran Coffeeshop
+    </div>
+    <div class="subtitle">
+        <strong>Kota Pekanbaru</strong>
+        Sistem Informasi Geografis · 2025
+    </div>
+    <div class="badge">
+        <div class="badge-item">🗺️ OpenStreetMap</div>
+        <div class="badge-item">🔌 QGIS2Web</div>
+    </div>
+</div>
+
+<!-- MAP -->
+<div id="map"></div>
+
+<!-- SIDE PANEL -->
+<div id="side-panel">
+
+    <!-- Statistics -->
+    <div class="panel-section">
+        <div class="section-title">📊 Statistik</div>
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="num" id="stat-total">—</div>
+                <div class="lbl">Total Coffeeshop</div>
+            </div>
+            <div class="stat-card">
+                <div class="num">12</div>
+                <div class="lbl">Kecamatan</div>
+            </div>
+            <div class="stat-card">
+                <div class="num" id="stat-kec">—</div>
+                <div class="lbl">Kec. Terbanyak</div>
+            </div>
+            <div class="stat-card">
+                <div class="num">PKU</div>
+                <div class="lbl">Kota Pekanbaru</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Layer Control -->
+    <div class="panel-section">
+        <div class="section-title">🗂️ Layer</div>
+
+        <div class="layer-toggle">
+            <div class="layer-info">
+                <div class="layer-icon coffee-icon">☕</div>
+                <div class="layer-name">Titik Coffeeshop</div>
+            </div>
+            <label class="toggle-switch">
+                <input type="checkbox" id="toggle-coffee" checked>
+                <span class="toggle-slider"></span>
+            </label>
+        </div>
+
+        <div class="layer-toggle">
+            <div class="layer-info">
+                <div class="layer-icon kecamatan-icon"></div>
+                <div class="layer-name">Batas Kecamatan</div>
+            </div>
+            <label class="toggle-switch">
+                <input type="checkbox" id="toggle-kec" checked>
+                <span class="toggle-slider"></span>
+            </label>
+        </div>
+
+        <div class="layer-toggle">
+            <div class="layer-info">
+                <div class="layer-icon jalan-icon"></div>
+                <div class="layer-name">Jaringan Jalan</div>
+            </div>
+            <label class="toggle-switch">
+                <input type="checkbox" id="toggle-jalan" checked>
+                <span class="toggle-slider"></span>
+            </label>
+        </div>
+    </div>
+
+    <!-- Legend -->
+    <div class="panel-section" style="flex:1; overflow:hidden; display:flex; flex-direction:column;">
+        <div class="section-title">🎨 Legenda Kecamatan</div>
+        <div class="legend-list" id="legend-list">
+            <!-- filled by JS -->
+        </div>
+    </div>
+
+    <!-- Credit -->
+    <div class="credit">
+        Data: BIG Indonesia & Survey Lapangan<br>
+        Dibuat dengan QGIS &amp; Leaflet.js<br>
+        Tugas Kelompok SIG · 2025
+    </div>
+</div>
+
+<!-- Leaflet JS -->
+<script src="js/qgis2web_expressions.js"></script>
+<script src="js/leaflet.js"></script>
+<script src="js/L.Control.Locate.min.js"></script>
+<script src="js/leaflet.rotatedMarker.js"></script>
+<script src="js/leaflet.pattern.js"></script>
+<script src="js/leaflet-hash.js"></script>
+<script src="js/Autolinker.min.js"></script>
+<script src="js/rbush.min.js"></script>
+<script src="js/labelgun.min.js"></script>
+<script src="js/labels.js"></script>
+<script src="js/leaflet-search.js"></script>
+<script src="js/leaflet.markercluster.js"></script>
+
+<!-- Data layers -->
+<script src="data/RBI50K_KOTAPEKANBARU_KUGI50_20221231ADMINISTRASI_AR_KECAMATAN_1.js"></script>
+<script src="data/Clipped_2.js"></script>
+<script src="data/cofeeshop2Sheet1_3.js"></script>
+
+<script>
+// ── KECAMATAN COLORS ──
+const kecColors = {
+    'Binawidya':      '#ffffe0',
+    'Bukit Raya':     '#d4edda',
+    'Kulim':          '#c3e6cb',
+    'Lima Puluh':     '#b8ddc8',
+    'Marpoyan Damai': '#a8d5b5',
+    'Payung Sekaki':  '#8fcba0',
+    'Pekanbaru Kota': '#76bf8a',
+    'Rumbai':         '#5db375',
+    'Rumbai Barat':   '#44a760',
+    'Rumbai Timur':   '#2b9b4a',
+    'Sail':           '#228f3c',
+    'Senapelan':      '#19832e',
+    'Sukajadi':       '#107720',
+    'Tenayan Raya':   '#076b12',
+    'Tuahmadani':     '#3cc467',
+};
+
+// ── MAP INIT ──
+var map = L.map('map', {
+    zoomControl: false,
+    maxZoom: 20,
+    minZoom: 10
+}).fitBounds([[0.37, 101.27],[0.63, 101.58]]);
+
+// Basemap
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution: '© OpenStreetMap contributors, © CARTO',
+    maxZoom: 20
+}).addTo(map);
+
+// Hash
+var hash = new L.Hash(map);
+
+// Zoom control
+L.control.zoom({ position: 'topleft' }).addTo(map);
+
+// Locate
+L.control.locate({ locateOptions: { maxZoom: 16 } }).addTo(map);
+
+var autolinker = new Autolinker({ truncate: { length: 30, location: 'smart' } });
+
+// ── KECAMATAN LAYER ──
+function styleKec(feature) {
+    var name = feature.properties['NAMOBJ'];
+    var fill = kecColors[name] || '#00aa44';
+    return {
+        opacity: 1,
+        color: 'rgba(255,255,255,0.4)',
+        weight: 1.5,
+        fill: true,
+        fillOpacity: 0.55,
+        fillColor: fill,
+    };
+}
+
+function popKec(feature, layer) {
+    var name = feature.properties['NAMOBJ'] || '—';
+    layer.on({
+        mouseover: function(e) {
+            e.target.setStyle({ fillOpacity: 0.8, weight: 2.5 });
+            e.target.openPopup();
+        },
+        mouseout: function(e) {
+            kecLayer.resetStyle(e.target);
+            e.target.closePopup();
+        }
+    });
+    layer.bindPopup(
+        '<div class="kec-popup">' +
+        '<strong>🏘️ ' + name + '</strong>' +
+        '<small>Kecamatan · Kota Pekanbaru</small>' +
+        '</div>',
+        { closeButton: false }
+    );
+    // Label
+    layer.bindTooltip(name, {
+        permanent: true, direction: 'center',
+        className: 'kec-label',
+        offset: [0, 0]
+    });
+}
+
+var kecLayer = L.geoJson(json_RBI50K_KOTAPEKANBARU_KUGI50_20221231ADMINISTRASI_AR_KECAMATAN_1, {
+    style: styleKec,
+    onEachFeature: popKec
+}).addTo(map);
+
+// ── JALAN LAYER ──
+var jalanLayer = L.geoJson(json_Clipped_2, {
+    style: function() {
+        return {
+            color: 'rgba(220,80,60,0.7)',
+            weight: 1.2,
+            opacity: 0.8
+        };
+    }
+}).addTo(map);
+
+// ── CUSTOM COFFEE ICON ──
+function coffeeIcon() {
+    return L.divIcon({
+        className: '',
+        html: '<div class="coffee-marker-div"><span>☕</span></div>',
+        iconSize: [28, 28],
+        iconAnchor: [14, 28],
+        popupAnchor: [0, -30]
+    });
+}
+
+// ── COFFEESHOP LAYER ──
+function popCoffee(feature, layer) {
+    var nama  = feature.properties['Nama_Kafe'] || 'Coffeeshop';
+    var alamat = feature.properties['Alamat']   || 'Alamat tidak tersedia';
+    var lat  = feature.geometry.coordinates[1].toFixed(5);
+    var lng  = feature.geometry.coordinates[0].toFixed(5);
+    var gmaps = 'https://www.google.com/maps/search/?api=1&query=' + lat + ',' + lng;
+
+    layer.on({
+        mouseover: function(e) { e.target.openPopup(); }
+    });
+
+    layer.bindPopup(
+        '<div class="popup-header">' +
+          '<div class="popup-icon">☕</div>' +
+          '<div class="popup-name">' + nama + '</div>' +
+        '</div>' +
+        '<div class="popup-body">' +
+          '<div class="popup-addr"><i>📍</i>' + alamat + '</div>' +
+          '<a class="popup-btn" href="' + gmaps + '" target="_blank">🗺️ Lihat di Google Maps</a>' +
+        '</div>',
+        { maxWidth: 280 }
+    );
+}
+
+var coffeeCluster = L.markerClusterGroup({
+    maxClusterRadius: 40,
+    iconCreateFunction: function(cluster) {
+        var count = cluster.getChildCount();
+        return L.divIcon({
+            html: '<div style="background:var(--coffee-brown);border:2px solid var(--accent-gold);border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:#fff;box-shadow:0 2px 8px rgba(0,0,0,0.4)">' + count + '</div>',
+            className: '',
+            iconSize: [36, 36]
+        });
+    }
+});
+
+var coffeeLayer = L.geoJson(json_cofeeshop2Sheet1_3, {
+    pointToLayer: function(feature, latlng) {
+        return L.marker(latlng, { icon: coffeeIcon() });
+    },
+    onEachFeature: popCoffee
+});
+
+coffeeCluster.addLayer(coffeeLayer);
+map.addLayer(coffeeCluster);
+
+// ── STATISTICS ──
+var total = json_cofeeshop2Sheet1_3.features.length;
+document.getElementById('stat-total').textContent = total;
+
+// Count per kecamatan (best-effort from address string)
+var kecCount = {};
+json_cofeeshop2Sheet1_3.features.forEach(function(f) {
+    var addr = (f.properties['Alamat'] || '').toLowerCase();
+    var matched = 'Lainnya';
+    var kecs = ['tampan','bukit raya','marpoyan damai','sukajadi','payung sekaki','sail','lima puluh','pekanbaru kota','senapelan','tenayan raya','rumbai','binawidya'];
+    kecs.forEach(function(k) {
+        if (addr.indexOf(k) !== -1) matched = k.split(' ').map(function(w){ return w[0].toUpperCase()+w.slice(1); }).join(' ');
+    });
+    kecCount[matched] = (kecCount[matched] || 0) + 1;
+});
+var topKec = Object.keys(kecCount).sort(function(a,b){ return kecCount[b]-kecCount[a]; })[0] || '—';
+document.getElementById('stat-kec').textContent = topKec.split(' ').map(function(w){ return w[0]; }).join('');
+document.getElementById('stat-kec').title = topKec;
+
+// ── LEGEND ──
+var legendList = document.getElementById('legend-list');
+Object.keys(kecColors).forEach(function(name) {
+    var item = document.createElement('div');
+    item.className = 'legend-item';
+    item.innerHTML =
+        '<div class="legend-color" style="background:' + kecColors[name] + '"></div>' +
+        '<div class="legend-label">' + name + '</div>';
+    legendList.appendChild(item);
+});
+// Jalan
+var jalanItem = document.createElement('div');
+jalanItem.className = 'legend-item';
+jalanItem.style.marginTop = '6px';
+jalanItem.innerHTML =
+    '<div class="legend-color" style="background:rgba(220,80,60,0.7);border-radius:2px;height:4px;width:20px;border:none"></div>' +
+    '<div class="legend-label">Jaringan Jalan</div>';
+legendList.appendChild(jalanItem);
+
+var coffeeItem = document.createElement('div');
+coffeeItem.className = 'legend-item';
+coffeeItem.innerHTML =
+    '<div style="font-size:14px;line-height:1">☕</div>' +
+    '<div class="legend-label">Titik Coffeeshop</div>';
+legendList.appendChild(coffeeItem);
+
+// ── LAYER TOGGLES ──
+document.getElementById('toggle-coffee').addEventListener('change', function() {
+    if (this.checked) map.addLayer(coffeeCluster);
+    else map.removeLayer(coffeeCluster);
+});
+
+document.getElementById('toggle-kec').addEventListener('change', function() {
+    if (this.checked) map.addLayer(kecLayer);
+    else map.removeLayer(kecLayer);
+});
+
+document.getElementById('toggle-jalan').addEventListener('change', function() {
+    if (this.checked) map.addLayer(jalanLayer);
+    else map.removeLayer(jalanLayer);
+});
+
+// ── SEARCH ──
+map.addControl(new L.Control.Search({
+    layer: coffeeLayer,
+    initial: false,
+    hideMarkerOnCollapse: true,
+    propertyName: 'Nama_Kafe',
+    position: 'topleft',
+    zoom: 16
+}));
+
+// ── HIDE LOADER ──
+window.addEventListener('load', function() {
+    setTimeout(function() {
+        var loader = document.getElementById('loader');
+        loader.style.opacity = '0';
+        setTimeout(function() { loader.style.display = 'none'; }, 600);
+    }, 800);
+});
+</script>
+
+<!-- Extra label CSS injected after Leaflet -->
+<style>
+.kec-label {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    font-family: 'DM Sans', sans-serif !important;
+    font-size: 9px !important;
+    font-weight: 600 !important;
+    color: #1a0f00 !important;
+    text-shadow: 0 0 3px rgba(255,255,255,0.8) !important;
+    white-space: nowrap !important;
+}
+</style>
+</body>
+</html>
